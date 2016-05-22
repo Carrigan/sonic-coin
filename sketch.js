@@ -1,7 +1,17 @@
 var ws;
-var amounts = [];
+var transactions = [];
 var oscillators = [];
 var scale_notes = [];
+
+function add_transaction(amount, duration) {
+  transactions.push({
+    start: millis(),
+    duration: duration * 1000,
+    x: random(windowWidth),
+    y: random(windowHeight),
+    amount: amount.toFixed(2)
+  });
+}
 
 function change_chord(intervals, start_note, octaves) {
   scale_notes = [];
@@ -14,7 +24,7 @@ function change_chord(intervals, start_note, octaves) {
 
 function play_btc(amount) {
   var log_amt = Math.log(amount);
-  var max_v = Math.log(10000);
+  var max_v = Math.log(20000);
   var min_v = 0;
 
   // Make higher amounts map to lower pitched notes
@@ -82,11 +92,12 @@ function preload() {
   };
 
   ws.onmessage = function(event) {
-    data = JSON.parse(event.data);
-    outputs = data.x.out;
-    amount = (outputs[outputs.length - 1].value / 100000000) * 450;
-    amounts.push(amount.toFixed(2));
-    play_btc(amount);
+    var data = JSON.parse(event.data);
+    var outputs = data.x.out;
+    var amount = (outputs[outputs.length - 1].value / 100000000) * 450;
+    var duration = play_btc(amount);
+
+    add_transaction(amount, duration);
   };
 }
 
@@ -103,6 +114,20 @@ function setup() {
 }
 
 function draw() {
-  for(var i = 0; i < amounts.length; i++) text(amounts[i], random(windowWidth), random(windowHeight));
-  amounts = [];
+  background(50);
+
+  var next_transactions = [];
+  for(var i = 0; i < transactions.length; i++) {
+    var transaction = transactions[i];
+    var end_time = transaction.start + transaction.duration;
+    if(millis() < end_time) {
+      var color = map(millis() - transaction.start, 0, transaction.duration, 250, 50);
+      fill(color);
+      text(transaction.amount, transaction.x, transaction.y);
+
+      next_transactions.push(transaction);
+    }
+  }
+
+  transactions = next_transactions;
 }
